@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  # Notification service that handles WebSocket connections and interacts with Kafka, Cassandra, and Redis
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"  # Expose port 8080 for the notification service
+    depends_on:
+      - kafka        # Ensure Kafka is started before this service
+      - cassandra    # Ensure Cassandra is started before this service
+      - redis        # Ensure Redis is started before this service
+    environment:
+      KAFKA_BROKER: kafka:9092
+      CASSANDRA_HOST: cassandra  # Connect to Cassandra using its service name
+      REDIS_HOST: redis          # Connect to Redis using its service name
+      REDIS_PORT: 6379           # Default Redis port
+      REDIS_CONNECTIONS_KEY: "websocket_connections"  # Redis key for storing WebSocket connections
+
+  # Kafka service, for message brokering
+  kafka:
+    image: confluentinc/cp-kafka:7.0.1
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092  # External listener address
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper  # Kafka depends on Zookeeper to be running
+    ports:
+      - "9092:9092"  # Expose Kafka port for external communication
+
+  # Zookeeper service, required by Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"  # Expose Zookeeper port for Kafka communication
+
+  # Cassandra service, used for data storage
+  cassandra:
+    image: cassandra:4.0
+    ports:
+      - "9042:9042"  # Expose Cassandra port for database communication
+    environment:
+      CASSANDRA_CLUSTER_NAME: "NotificationCluster"  # Define the Cassandra cluster name
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]  # Health check to ensure Cassandra is ready
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./init-keyspace.cql:/docker-entrypoint-initdb.d/init-keyspace.cql
+
+  # Redis service, for storing WebSocket connections
+  redis:
+    image: redis:7.0
+    ports:
+      - "6379:6379"  # Expose Redis port for communication with the notification service
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]  # Health check to ensure Redis is running
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis-data:/data  # Persist Redis data in a named volume
+
+volumes:
+  redis-data:
+    driver: local
