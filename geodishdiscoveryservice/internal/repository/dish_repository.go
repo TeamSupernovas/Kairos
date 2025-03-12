@@ -100,6 +100,7 @@ func (r *DishRepository) GetDishesByLocation(
                 },
             },
         },
+		"AvailablePortions": bson.M{"$gt": 0},
     }
 
     // Add optional filters

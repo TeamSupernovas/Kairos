@@ -8,7 +8,9 @@ import (
 	"geodishdiscoveryservice/internal/repository"
 	"geodishdiscoveryservice/internal/service"
 	"log"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,6 +53,14 @@ func main() {
 
 	// Set up Gin router
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"PUT", "PATCH", "GET", "POST"},
+		AllowHeaders:     []string{"Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge: 12 * time.Hour,
+	  }))
 
 	// Register REST API endpoint
 	router.GET("/dishes/search", dishHandler.GetNearbyDishes)

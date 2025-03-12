@@ -1,10 +1,13 @@
 package infrastructure
 
 import (
+	"crypto/tls"
 	"fmt"
 	"geodishdiscoveryservice/config"
+	"time"
 
 	"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go/sasl/plain"
 )
 
 const (
@@ -24,11 +27,22 @@ type KafkaResources struct {
 func initKafka(cfg config.KafkaConfig) (*KafkaResources, error) {
 	brokerAddress := fmt.Sprintf("%s:%s", cfg.Host(), cfg.Port())
 
+	mechanism := plain.Mechanism {Username: cfg.Username(), Password: cfg.Password()}
+	
+	dialer := &kafka.Dialer{
+		Timeout:       60 * time.Second,
+		DualStack:     true,
+		SASLMechanism: mechanism,
+		TLS: 			&tls.Config{},
+	}
+
+
 	// Initialize readers for each topic
 	readerDishCreated := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{brokerAddress},
 		GroupID: cfg.GroupID(),
 		Topic:   cfg.TopicDishCreated(),
+		Dialer:  dialer,
 	})
 
 	readerDishUpdated := kafka.NewReader(kafka.ReaderConfig{

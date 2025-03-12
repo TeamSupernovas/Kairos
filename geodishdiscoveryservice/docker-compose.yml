@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  # MongoDB Service
+  mongo:
+    image: mongo:6.0
+    container_name: mongo_container
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # Go Application (GeoDish Discovery Service)
+  app:
+    image: neeharikasingh/geo-app:2.2
+    container_name: geodish_discovery_service
+    restart: always
+    depends_on:
+      - mongo
+    env_file:
+      - gds.env
+
+    environment:
+      # Kafka (Connect to Host Machine)
+      KAFKA_HOST: ${KAFKA_HOST}
+      KAFKA_PORT: ${KAFKA_PORT}
+      KAFKA_TOPIC_DISH_CREATED: ${KAFKA_TOPIC_DISH_CREATED}
+      KAFKA_TOPIC_DISH_UPDATED: ${KAFKA_TOPIC_DISH_UPDATED}
+      KAFKA_TOPIC_DISH_DELETED: ${KAFKA_TOPIC_DISH_DELETED}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID}
+
+      # MongoDB
+      MONGO_USERNAME: ${MONGO_USERNAME}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_HOST: ${MONGO_HOST}
+      MONGO_PORT: ${MONGO_PORT}
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+
+      #AWS
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+      AWS_LOCATION_PLACE_INDEX_NAME: ${AWS_LOCATION_PLACE_INDEX_NAME}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      APP_PORT: ${APP_PORT}
+    ports:
+      - "${APP_PORT}:9091"
+
+volumes:
+  mongo_data:
+    driver: local

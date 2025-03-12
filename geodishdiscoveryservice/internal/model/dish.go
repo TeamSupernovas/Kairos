@@ -12,7 +12,7 @@ type Dish struct {
 	AvailablePortions int       `bson:"AvailablePortions" json:"AvailablePortions"`
 	MealCourse       string     `bson:"MealCourse" json:"MealCourse"`
 	DietaryCategory  string     `bson:"DietaryCategory" json:"DietaryCategory"`
-	AvailableUntil   time.Time  `bson:"AvailableUntil" json:"AvailableUntil"`
+	AvailableUntil   *time.Time  `bson:"AvailableUntil" json:"AvailableUntil"`
 	Location         Location   `bson:"location" json:"location"` // GeoJSON format for geospatial queries
 	Address          Address    `bson:"Address" json:"Address"`
 	CreatedAt        time.Time  `bson:"CreatedAt" json:"CreatedAt"`
