@@ -6,12 +6,12 @@ WORKDIR /app
 
 
 # Copy the built Spring Boot JAR file
-COPY target/ dishmanagementservice.jar
+COPY target/dishmanagementservice-1.1.jar .
 
 # Expose the application port (use default 8080)
 EXPOSE 8080
 
 # Command to run the application
-ENTRYPOINT ["java", "-jar", "dishmanagementservice.jar"]
+ENTRYPOINT ["java", "-jar", "dishmanagementservice-1.1.jar"]
 
 #ENTRYPOINT ["sh", "-c", "java -jar dishmanagementservice_1.jar & tail -f /dev/null"]

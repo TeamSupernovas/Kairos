@@ -17,8 +17,8 @@ services:
 
   # Spring Boot Application
   app:
-    image: neeharikasingh/dms-app:1.0
-    container_name: dish_management_service_4
+    image: neeharikasingh/dms-app:5.1
+    container_name: dish_management_service
     restart: always
     depends_on:
       - postgres
