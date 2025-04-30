@@ -2,52 +2,93 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"kairos/rating-service/controllers"
 	"kairos/rating-service/db"
+	"kairos/rating-service/kafka"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system env vars")
+	}
+
 	// Database connection
-	dsn := "postgres://admin:123456@localhost:5434/rating-db?sslmode=disable"
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL is not set")
+	}
 
 	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
-		log.Fatalf("Unable to create connection pool: %v", err)
+		log.Fatalf("PostgreSQL connection failed: %v", err)
 	}
 	defer pool.Close()
 
-	err = pool.Ping(context.Background())
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v", err)
+	if err := pool.Ping(context.Background()); err != nil {
+		log.Fatalf("PostgreSQL ping failed: %v", err)
 	}
+	log.Println("Connected to PostgreSQL")
 
-	fmt.Println("Connected to the database!")
-	r := gin.Default() // Create a Gin router
+	// Kafka setup
+	brokers := os.Getenv("KAFKA_BROKERS")
+	if brokers == "" {
+		log.Fatal("KAFKA_BROKERS not set")
+	}
+	err = kafka.InitKafkaProducer(strings.Split(brokers, ","))
+	if err != nil {
+		log.Fatalf(" Kafka producer init failed: %v", err)
+	}
+	log.Println(" Kafka producer initialized")
 
-	// Routes
+	// Gin router setup
+	r := gin.Default()
+
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Rating-service Started"})
+		c.JSON(http.StatusOK, gin.H{"message": "Rating-service is running"})
 	})
 
-	// Initialize queries object
 	queries := db.New(pool)
 
-	// CRUD Routes for Ratings
-	r.POST("/ratings", func(c *gin.Context) { controllers.CreateRating(c, queries) })       // Create Rating
-	r.GET("/ratings/:id", func(c *gin.Context) { controllers.GetRating(c, queries) })       // Get Rating by ID
-	r.GET("/ratings", func(c *gin.Context) { controllers.ListRatings(c, queries) })         // List All Ratings
-	r.PUT("/ratings/:id", func(c *gin.Context) { controllers.UpdateRating(c, queries) })    // Update Rating by ID
-	r.DELETE("/ratings/:id", func(c *gin.Context) { controllers.DeleteRating(c, queries) }) // Delete Rating by ID
+	// Routes
+	r.POST("/ratings", func(c *gin.Context) { controllers.CreateRating(c, queries) })
+	r.GET("/ratings/:id", func(c *gin.Context) { controllers.GetRating(c, queries) })
+	r.GET("/ratings", func(c *gin.Context) { controllers.ListRatings(c, queries) })
+	r.PUT("/ratings/:id", func(c *gin.Context) { controllers.UpdateRating(c, queries) })
+	r.DELETE("/ratings/:id", func(c *gin.Context) { controllers.DeleteRating(c, queries) })
 
-	// Start the server on port 8080
-	if err := r.Run(":8080"); err != nil {
-		panic("Failed to start the server: " + err.Error())
+	r.GET("/dishes/:dishId/ratings", func(c *gin.Context) {
+		controllers.ListRatingsForDish(c, queries)
+	})
+	r.GET("/users/:userId/ratings", func(c *gin.Context) {
+		controllers.ListRatingsByUser(c, queries)
+	})
+	r.GET("/ratings/chef/:chefId", func(c *gin.Context) {
+		controllers.ListRatingsByChef(c, queries)
+	})
+	r.GET("/ratings/chef/:chefId/average", func(c *gin.Context) {
+		controllers.GetChefAverageRating(c, queries)
+	})
+	r.GET("/ratings/dish/:dishId/average", func(c *gin.Context) {
+		controllers.GetDishAverageRating(c, queries)
+	})
+
+	// Start server
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("🚀 Server listening on port %s", port)
+	if err := r.Run(":" + port); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
