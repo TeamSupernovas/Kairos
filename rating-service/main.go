@@ -10,7 +10,7 @@ import (
 	"kairos/rating-service/controllers"
 	"kairos/rating-service/db"
 	"kairos/rating-service/kafka"
-
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -53,6 +53,9 @@ func main() {
 	// Gin router setup
 	r := gin.Default()
 
+	// Enable CORS to allow all origins
+	r.Use(cors.Default())
+
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Rating-service is running"})
 	})
@@ -83,7 +86,7 @@ func main() {
 	})
 
 	// Start server
-	port := os.Getenv("PORT")
+	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
 	}

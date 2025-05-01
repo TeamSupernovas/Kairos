@@ -39,7 +39,7 @@ ENV DATABASE_URL=${DATABASE_URL} \
     SERVER_PORT=${SERVER_PORT:-8080}
 
 # Expose server port
-EXPOSE 8080
+EXPOSE ${SERVER_PORT}
 
 # Run migrations and start the app
 CMD ["sh", "-c", "psql $DATABASE_URL -f /root/migrations/000001_create_rating_table.up.sql && ./rating-service"]
