@@ -142,17 +142,37 @@ func main() {
 	}
 
 	fmt.Println("Connected to the database!")
+// Initialize Kafka config
+kafkaConfig := kafka.NewKafkaConfig([]string{kafkaBrokers})
 
-	// Initialize the Kafka producer
-	kafkaConfig := kafka.NewKafkaConfig([]string{kafkaBrokers})
-	kafkaProducer, err := kafka.NewKafkaProducer(kafkaConfig)
+// Initialize Kafka producer
+kafkaProducer, err := kafka.NewKafkaProducer(kafkaConfig)
+if err != nil {
+	log.Fatalf("Error initializing Kafka producer: %v", err)
+}
+defer kafka.CloseKafkaProducer(kafkaProducer)
+
+// Initialize Kafka consumer
+kafkaConsumer, err := kafka.NewKafkaConsumer(kafkaConfig)
+if err != nil {
+	log.Fatalf("Error initializing Kafka consumer: %v", err)
+}
+defer kafka.CloseKafkaConsumer(kafkaConsumer)
+
+// Initialize DB query layer
+queries := db.New(pool)
+
+// Listen for reservation status events in a goroutine
+go func() {
+	err := kafka.ConsumeReservationStatus(
+		kafkaConsumer,
+		controllers.HandleReservationStatus(queries, kafkaProducer),
+	)
 	if err != nil {
-		log.Fatalf("Error initializing Kafka producer: %v", err)
+		log.Fatalf("Reservation status consumer error: %v", err)
 	}
-	defer kafka.CloseKafkaProducer(kafkaProducer)
+}()
 
-	// Initialize queries object
-	queries := db.New(pool)
 
 	// Define routes
 	r.GET("/", func(c *gin.Context) {
@@ -168,7 +188,7 @@ func main() {
 		orderGroup.GET("/", controllers.GetOrdersByConsumer(queries))                    // GET /orders?user_id=12345 - Get orders by consumer
 		orderGroup.GET("/provider", controllers.GetOrdersByProvider(queries))            // GET /orders/provider?chef_id=provider123 - Get orders by provider
 		orderGroup.DELETE("/:orderItemId", controllers.DeleteOrderItem(pool, queries))   // DELETE /orders/order001 - Delete Order
-		orderGroup.PATCH("/:orderId/status", controllers.UpdateOrderItemStatus(queries)) // PATCH /orders/order987/status - Update order status
+		orderGroup.PATCH("/:orderId/status", controllers.UpdateOrderItemStatus(queries,kafkaProducer)) // PATCH /orders/order987/status - Update order status
 		orderGroup.GET("/:orderId/status", controllers.GetOrderItemStatus(queries))      // GET /orders/{orderId}/status - Get order status
 	}
 

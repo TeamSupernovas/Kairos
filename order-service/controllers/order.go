@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"encoding/json"
+	"context"
 	"fmt"
+	"strings"
 	"kairos/order-service/db"
 	"kairos/order-service/kafka"
 	"github.com/IBM/sarama"
@@ -94,6 +97,21 @@ func CreateOrder(queries *db.Queries, kafkaProducer sarama.SyncProducer) gin.Han
 
 
 		}
+
+		notifUser := kafka.NotificationEvent{
+			UserID:  newOrder.UserID,
+			Message: fmt.Sprintf("Order %s created successfully", orderID),
+			Type:    "OrderService",
+		}
+		_ = kafka.SendNotification(kafkaProducer, notifUser)
+
+		notifChef := kafka.NotificationEvent{
+			UserID:  newOrder.ChefID,
+			Message: fmt.Sprintf("New order %s received", orderID),
+			Type:    "OrderService",
+		}
+		_ = kafka.SendNotification(kafkaProducer, notifChef)
+
 
 		// Respond with success message
 		c.JSON(http.StatusOK, gin.H{
@@ -264,7 +282,7 @@ func DeleteOrderItem(pool *pgxpool.Pool, queries *db.Queries) gin.HandlerFunc {
 }
 
 // UpdateOrderItemStatus handles updating the status of an order item.
-func UpdateOrderItemStatus(queries *db.Queries) gin.HandlerFunc {
+func UpdateOrderItemStatus(queries *db.Queries, kafkaProducer sarama.SyncProducer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -278,6 +296,8 @@ func UpdateOrderItemStatus(queries *db.Queries) gin.HandlerFunc {
 		// Get the new status from the request body.
 		var requestBody struct {
 			Status string `json:"status" binding:"required"`
+			UserID string `json:"user_id" binding:"required"`
+			ChefID string `json:"chef_id" binding:"required"`
 		}
 		if err := c.ShouldBindJSON(&requestBody); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -287,10 +307,16 @@ func UpdateOrderItemStatus(queries *db.Queries) gin.HandlerFunc {
 		// Ensure the status is valid.
 		validStatuses := map[string]bool{
 			"pending":   true,
+			"PENDING": true,
+			"CONFIRMED": true,
 			"confirmed": true,
-			"ready":     true,
+			"READY": true,
+			"ready": true,
+			"CANCELED": true,
 			"canceled":  true,
+			"COMPLETED": true,
 			"completed": true,
+
 		}
 		if !validStatuses[requestBody.Status] {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status value"})
@@ -306,6 +332,20 @@ func UpdateOrderItemStatus(queries *db.Queries) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order item status"})
 			return
 		}
+
+		userNotif := kafka.NotificationEvent{
+			UserID:  requestBody.UserID, 
+			Message: fmt.Sprintf("Order item %s status updated to %s", orderItemID, requestBody.Status),
+			Type:    "OrderService",
+		}
+		_ = kafka.SendNotification(kafkaProducer, userNotif)
+
+		chefNotif := kafka.NotificationEvent{
+			UserID:  requestBody.ChefID, 
+			Message: fmt.Sprintf("Order item %s status updated to %s", orderItemID, requestBody.Status),
+			Type:    "OrderService",
+		}
+		_ = kafka.SendNotification(kafkaProducer, chefNotif)
 
 		// Respond with a success message.
 		c.JSON(http.StatusOK, gin.H{
@@ -335,5 +375,70 @@ func GetOrderItemStatus(queries *db.Queries) gin.HandlerFunc {
 			"orderItemId":     orderItemID,
 			"dishOrderStatus": status,
 		})
+	}
+}
+
+
+// HandleReservationStatus processes reservation status updates from Kafka
+func HandleReservationStatus(queries *db.Queries, kafkaProducer sarama.SyncProducer) func(key, value []byte) {
+	return func(key, value []byte) {
+		var payload struct {
+			DishID  string `json:"dish_id"`
+			OrderID string `json:"order_id"`
+			Status  string `json:"status"`
+			UserID  string `json:"user_id"`
+			ChefID  string `json:"chef_id"`
+		}
+
+		err := json.Unmarshal(value, &payload)
+		if err != nil {
+			log.Println("Failed to unmarshal reservation status message:", err)
+			return
+		}
+
+		status := strings.ToLower(payload.Status)
+		validStatuses := map[string]bool{
+			"confirmed": true,
+			"rejected":  true,
+		}
+
+		if !validStatuses[status] {
+			log.Println("Invalid reservation status received:", status)
+			return
+		}
+
+		ctx := context.Background()
+		affected, err := queries.UpdateOrderItemStatusByOrderIDDishID(ctx, db.UpdateOrderItemStatusByOrderIDDishIDParams{
+			OrderID:         payload.OrderID,
+			DishID:          payload.DishID,
+			DishOrderStatus: status,
+		})
+		if err != nil {
+			log.Println("Failed to update order item status:", err)
+			return
+		}
+
+		if affected == 0 {
+			log.Printf("No matching order item found for order_id=%s, dish_id=%s. Skipping notification.", payload.OrderID, payload.DishID)
+			return
+		}
+
+		log.Printf(" Order item status updated: order_id=%s, dish_id=%s, status=%s",
+			payload.OrderID, payload.DishID, status)
+
+		// Send notifications
+		notifUser := kafka.NotificationEvent{
+			UserID:  payload.UserID,
+			Message: fmt.Sprintf("Your reservation for dish %s was %s", payload.DishID, status),
+			Type:    "OrderService",
+		}
+		_ = kafka.SendNotification(kafkaProducer, notifUser)
+
+		notifChef := kafka.NotificationEvent{
+			UserID:  payload.ChefID,
+			Message: fmt.Sprintf("Reservation status for dish %s updated to %s", payload.DishID, status),
+			Type:    "OrderService",
+		}
+		_ = kafka.SendNotification(kafkaProducer, notifChef)
 	}
 }

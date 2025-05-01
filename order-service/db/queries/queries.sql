@@ -81,3 +81,10 @@ AND deleted_at IS NULL;
 SELECT dish_order_status 
 FROM order_items 
 WHERE order_item_id = $1 AND deleted_at IS NULL;
+
+-- name: UpdateOrderItemStatusByOrderIDDishID :execrows
+UPDATE order_items
+SET dish_order_status = $3
+WHERE order_id = $1
+  AND dish_id = $2
+  AND deleted_at IS NULL;

@@ -9,7 +9,7 @@ CREATE TABLE orders (
     canceled_at TIMESTAMPTZ,                            -- Nullable
     completed_at TIMESTAMPTZ,                           -- Nullable
     order_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (
-        order_status IN ('pending', 'confirmed', 'ready','canceled', 'completed')
+    LOWER(order_status) IN ('pending', 'confirmed', 'ready', 'canceled', 'completed')
     ),
     deleted_at TIMESTAMPTZ                              -- Nullable
 );
@@ -19,7 +19,7 @@ CREATE TABLE order_items (
     order_id  VARCHAR(50) NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
     dish_id  VARCHAR(50) NOT NULL,
     dish_order_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (
-        dish_order_status IN ('pending', 'confirmed', 'ready', 'canceled', 'completed')
+       LOWER(dish_order_status) IN ('pending', 'confirmed', 'ready', 'canceled', 'completed')
     ),
     quantity INT NOT NULL,
     price_per_unit DOUBLE PRECISION NOT NULL,
