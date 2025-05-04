@@ -78,10 +78,10 @@ FROM alpine:latest
 # Install Postgres client to run migrations
 RUN apk add --no-cache postgresql-client
 
-# Set environment variables (to be overridden at runtime)
-ENV DATABASE_URL=${DATABASE_URL} \
-    KAFKA_BROKERS=${KAFKA_BROKERS} \
-    SERVER_PORT=${SERVER_PORT}
+# # Set environment variables (to be overridden at runtime)
+# ENV DATABASE_URL=${DATABASE_URL} \
+#     KAFKA_BROKERS=${KAFKA_BROKERS} \
+#     SERVER_PORT=${SERVER_PORT}
 
 # Set working directory
 WORKDIR /root/
@@ -91,7 +91,7 @@ COPY --from=builder /app/order-service .
 COPY --from=builder /app/db/init.sql /root/init.sql
 
 # Expose the application port
-EXPOSE ${SERVER_PORT}
+# EXPOSE ${SERVER_PORT}
 
 # Command to run the executable after running the migrations
 CMD ["sh", "-c", "psql $DATABASE_URL -f /root/init.sql && ./order-service"]

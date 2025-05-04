@@ -86,9 +86,7 @@ services:
   #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   order-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: venkatesh1226m/kairos-orders-service:v1
     depends_on:
       - postgres
       # - kafka
