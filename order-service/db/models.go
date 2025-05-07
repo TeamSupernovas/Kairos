@@ -12,6 +12,8 @@ type Order struct {
 	OrderID     string      `json:"orderId"`
 	UserID      string      `json:"userId"`
 	ChefID      string      `json:"chefId"`
+	ChefName    string      `json:"chefName"`
+	UserName    string      `json:"userName"`
 	TotalPrice  float64     `json:"totalPrice"`
 	PickupTime  **time.Time `json:"pickupTime"`
 	CreatedAt   time.Time   `json:"createdAt"`
@@ -26,6 +28,7 @@ type OrderItem struct {
 	OrderItemID     string      `json:"orderItemId"`
 	OrderID         string      `json:"orderId"`
 	DishID          string      `json:"dishId"`
+	DishName        string      `json:"dishName"`
 	DishOrderStatus string      `json:"dishOrderStatus"`
 	Quantity        int32       `json:"quantity"`
 	PricePerUnit    float64     `json:"pricePerUnit"`
