@@ -11,8 +11,11 @@ import (
 type Rating struct {
 	ID         int32            `json:"id"`
 	DishID     string           `json:"dishId"`
+	DishName   string           `json:"dishName"`
 	ChefID     string           `json:"chefId"`
+	ChefName   string           `json:"chefName"`
 	UserID     string           `json:"userId"`
+	UserName   string           `json:"userName"`
 	Rating     pgtype.Int4      `json:"rating"`
 	ReviewText pgtype.Text      `json:"reviewText"`
 	CreatedAt  pgtype.Timestamp `json:"createdAt"`

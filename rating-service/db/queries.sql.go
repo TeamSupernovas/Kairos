@@ -12,15 +12,23 @@ import (
 )
 
 const createRating = `-- name: CreateRating :one
-INSERT INTO ratings (dish_id, chef_id, user_id, rating, review_text)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, dish_id, chef_id, user_id, rating, review_text, created_at
+INSERT INTO ratings (
+    dish_id, dish_name,
+    chef_id, chef_name,
+    user_id, user_name,
+    rating, review_text
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 `
 
 type CreateRatingParams struct {
 	DishID     string      `json:"dishId"`
+	DishName   string      `json:"dishName"`
 	ChefID     string      `json:"chefId"`
+	ChefName   string      `json:"chefName"`
 	UserID     string      `json:"userId"`
+	UserName   string      `json:"userName"`
 	Rating     pgtype.Int4 `json:"rating"`
 	ReviewText pgtype.Text `json:"reviewText"`
 }
@@ -28,8 +36,11 @@ type CreateRatingParams struct {
 func (q *Queries) CreateRating(ctx context.Context, arg CreateRatingParams) (Rating, error) {
 	row := q.db.QueryRow(ctx, createRating,
 		arg.DishID,
+		arg.DishName,
 		arg.ChefID,
+		arg.ChefName,
 		arg.UserID,
+		arg.UserName,
 		arg.Rating,
 		arg.ReviewText,
 	)
@@ -37,8 +48,11 @@ func (q *Queries) CreateRating(ctx context.Context, arg CreateRatingParams) (Rat
 	err := row.Scan(
 		&i.ID,
 		&i.DishID,
+		&i.DishName,
 		&i.ChefID,
+		&i.ChefName,
 		&i.UserID,
+		&i.UserName,
 		&i.Rating,
 		&i.ReviewText,
 		&i.CreatedAt,
@@ -95,7 +109,7 @@ func (q *Queries) GetOrderAverageRating(ctx context.Context, dishID string) (Get
 }
 
 const getRating = `-- name: GetRating :one
-SELECT id, dish_id, chef_id, user_id, rating, review_text, created_at
+SELECT id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 FROM ratings
 WHERE id = $1
 `
@@ -106,8 +120,11 @@ func (q *Queries) GetRating(ctx context.Context, id int32) (Rating, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.DishID,
+		&i.DishName,
 		&i.ChefID,
+		&i.ChefName,
 		&i.UserID,
+		&i.UserName,
 		&i.Rating,
 		&i.ReviewText,
 		&i.CreatedAt,
@@ -116,7 +133,7 @@ func (q *Queries) GetRating(ctx context.Context, id int32) (Rating, error) {
 }
 
 const listRatings = `-- name: ListRatings :many
-SELECT id, dish_id, chef_id, user_id, rating, review_text, created_at
+SELECT id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 FROM ratings
 ORDER BY created_at DESC
 `
@@ -133,8 +150,11 @@ func (q *Queries) ListRatings(ctx context.Context) ([]Rating, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.DishID,
+			&i.DishName,
 			&i.ChefID,
+			&i.ChefName,
 			&i.UserID,
+			&i.UserName,
 			&i.Rating,
 			&i.ReviewText,
 			&i.CreatedAt,
@@ -150,7 +170,7 @@ func (q *Queries) ListRatings(ctx context.Context) ([]Rating, error) {
 }
 
 const listRatingsByChef = `-- name: ListRatingsByChef :many
-SELECT id, dish_id, chef_id, user_id, rating, review_text, created_at
+SELECT id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 FROM ratings
 WHERE chef_id = $1
 ORDER BY created_at DESC
@@ -168,8 +188,11 @@ func (q *Queries) ListRatingsByChef(ctx context.Context, chefID string) ([]Ratin
 		if err := rows.Scan(
 			&i.ID,
 			&i.DishID,
+			&i.DishName,
 			&i.ChefID,
+			&i.ChefName,
 			&i.UserID,
+			&i.UserName,
 			&i.Rating,
 			&i.ReviewText,
 			&i.CreatedAt,
@@ -185,7 +208,7 @@ func (q *Queries) ListRatingsByChef(ctx context.Context, chefID string) ([]Ratin
 }
 
 const listRatingsByDish = `-- name: ListRatingsByDish :many
-SELECT id, dish_id, chef_id, user_id, rating, review_text, created_at
+SELECT id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 FROM ratings
 WHERE dish_id = $1
 ORDER BY created_at DESC
@@ -203,8 +226,11 @@ func (q *Queries) ListRatingsByDish(ctx context.Context, dishID string) ([]Ratin
 		if err := rows.Scan(
 			&i.ID,
 			&i.DishID,
+			&i.DishName,
 			&i.ChefID,
+			&i.ChefName,
 			&i.UserID,
+			&i.UserName,
 			&i.Rating,
 			&i.ReviewText,
 			&i.CreatedAt,
@@ -220,7 +246,7 @@ func (q *Queries) ListRatingsByDish(ctx context.Context, dishID string) ([]Ratin
 }
 
 const listRatingsByUser = `-- name: ListRatingsByUser :many
-SELECT id, dish_id, chef_id, user_id, rating, review_text, created_at
+SELECT id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 FROM ratings
 WHERE user_id = $1
 ORDER BY created_at DESC
@@ -238,8 +264,11 @@ func (q *Queries) ListRatingsByUser(ctx context.Context, userID string) ([]Ratin
 		if err := rows.Scan(
 			&i.ID,
 			&i.DishID,
+			&i.DishName,
 			&i.ChefID,
+			&i.ChefName,
 			&i.UserID,
+			&i.UserName,
 			&i.Rating,
 			&i.ReviewText,
 			&i.CreatedAt,
@@ -258,7 +287,7 @@ const updateRating = `-- name: UpdateRating :one
 UPDATE ratings
 SET rating = $2, review_text = $3
 WHERE id = $1
-RETURNING id, dish_id, chef_id, user_id, rating, review_text, created_at
+RETURNING id, dish_id, dish_name, chef_id, chef_name, user_id, user_name, rating, review_text, created_at
 `
 
 type UpdateRatingParams struct {
@@ -273,8 +302,11 @@ func (q *Queries) UpdateRating(ctx context.Context, arg UpdateRatingParams) (Rat
 	err := row.Scan(
 		&i.ID,
 		&i.DishID,
+		&i.DishName,
 		&i.ChefID,
+		&i.ChefName,
 		&i.UserID,
+		&i.UserName,
 		&i.Rating,
 		&i.ReviewText,
 		&i.CreatedAt,

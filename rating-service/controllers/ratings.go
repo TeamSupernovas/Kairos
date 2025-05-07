@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -13,8 +14,11 @@ import (
 
 type RatingRequest struct {
 	DishID     string `json:"dishId" binding:"required"`
+	DishName   string `json:"dishName" binding:"required"`
 	ChefID     string `json:"chefId" binding:"required"`
+	ChefName   string `json:"chefName" binding:"required"`
 	UserID     string `json:"userId" binding:"required"`
+	UserName   string `json:"userName" binding:"required"`
 	Rating     int32  `json:"rating" binding:"required,min=1,max=5"`
 	ReviewText string `json:"reviewText"`
 }
@@ -29,15 +33,18 @@ func CreateRating(c *gin.Context, q *db.Queries) {
 
 	params := db.CreateRatingParams{
 		DishID: req.DishID,
+		DishName: req.DishName,
 		ChefID: req.ChefID,
+		ChefName: req.ChefName,
 		UserID: req.UserID,
+		UserName: req.UserName,
 		Rating: pgtype.Int4{
 			Int32: req.Rating,
 			Valid: true,
 		},
 		ReviewText: pgtype.Text{
 			String: req.ReviewText,
-			Valid:  true,
+			Valid:  req.ReviewText != "",
 		},
 	}
 
@@ -47,10 +54,29 @@ func CreateRating(c *gin.Context, q *db.Queries) {
 		return
 	}
 
-	msg := "New rating submitted"
 	notifType := "RatingService"
-	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": req.UserID, "message": msg, "type": notifType})
-	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": req.ChefID, "message": msg, "type": notifType})
+
+	// Chef message: short preview
+	preview := req.ReviewText
+	if len(preview) > 30 {
+		preview = preview[:30] + "..."
+	}
+	chefMessage := fmt.Sprintf("%s rated '%s': \"%s\"", req.UserName, req.DishName, preview)
+
+	// User message
+	userMessage := fmt.Sprintf("You reviewed '%s' with %d ⭐ – thanks for your feedback!", req.DishName, req.Rating)
+
+	// Send notifications
+	_ = kafka.SendNotification(c.Request.Context(), gin.H{
+		"user_id": req.ChefID,
+		"message": chefMessage,
+		"type":    notifType,
+	})
+	_ = kafka.SendNotification(c.Request.Context(), gin.H{
+		"user_id": req.UserID,
+		"message": userMessage,
+		"type":    notifType,
+	})
 
 	c.JSON(http.StatusCreated, rating)
 }
@@ -111,7 +137,7 @@ func UpdateRating(c *gin.Context, q *db.Queries) {
 		},
 		ReviewText: pgtype.Text{
 			String: req.ReviewText,
-			Valid:  true,
+			Valid:  req.ReviewText != "",
 		},
 	}
 
@@ -125,10 +151,13 @@ func UpdateRating(c *gin.Context, q *db.Queries) {
 		return
 	}
 
-	msg := "Rating updated"
 	notifType := "RatingService"
-	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.UserID, "message": msg, "type": notifType})
-	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.ChefID, "message": msg, "type": notifType})
+
+	userMessage := fmt.Sprintf("You updated your rating for '%s'.", req.DishName)
+	chefMessage := fmt.Sprintf("%s updated their review for '%s'.", req.UserName, req.DishName)
+
+	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.UserID, "message": userMessage, "type": notifType})
+	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.ChefID, "message": chefMessage, "type": notifType})
 
 	c.JSON(http.StatusOK, rating)
 }
@@ -154,10 +183,12 @@ func DeleteRating(c *gin.Context, q *db.Queries) {
 		return
 	}
 
-	msg := "Rating deleted"
 	notifType := "RatingService"
-	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.UserID, "message": msg, "type": notifType})
-	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.ChefID, "message": msg, "type": notifType})
+	userMessage := fmt.Sprintf("You deleted your rating for '%s'.", rating.DishName)
+	chefMessage := fmt.Sprintf("%s removed their review for '%s'.", rating.UserName, rating.DishName)
+
+	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.UserID, "message": userMessage, "type": notifType})
+	_ = kafka.SendNotification(c.Request.Context(), gin.H{"user_id": rating.ChefID, "message": chefMessage, "type": notifType})
 
 	c.JSON(http.StatusOK, gin.H{"message": "rating deleted successfully"})
 }
