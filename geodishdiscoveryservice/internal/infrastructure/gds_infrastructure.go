@@ -4,7 +4,7 @@ import (
 	"geodishdiscoveryservice/config"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type Infrastructure struct {

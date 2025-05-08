@@ -7,28 +7,22 @@ import (
 	"log"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func initDB(dbConfig config.DatabaseConfig) (*mongo.Client, error) {
-    var uri string
-    if dbConfig.Username() != "" && dbConfig.Password() != "" {
-        // Use authentication if credentials are provided
-        uri = fmt.Sprintf("mongodb://%s:%s@%s:%s", dbConfig.Username(), dbConfig.Password(), dbConfig.Host(), dbConfig.Port())
-    } else {
-        // No authentication
-        uri = fmt.Sprintf("mongodb://%s:%s", dbConfig.Host(), dbConfig.Port())
-    }
+    connectionUri := dbConfig.ConnectionURI()
 
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
     // Set client options
-    clientOptions := options.Client().ApplyURI(uri)
+    clientOptions := options.Client().ApplyURI(connectionUri).SetServerAPIOptions(serverAPI)
 
     // Create a new client and connect to the server
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
-    client, err := mongo.Connect(ctx, clientOptions)
+    client, err := mongo.Connect(clientOptions)
     if err != nil {
         return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
     }

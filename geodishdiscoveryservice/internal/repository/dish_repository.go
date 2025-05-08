@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"geodishdiscoveryservice/internal/model"
+	"log"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type DishRepository struct {
@@ -89,7 +90,7 @@ func (r *DishRepository) GetDishesByLocation(
 ) ([]model.Dish, int, error) {
     // Convert radius from meters to radians (required for $geoWithin)
     radiusInRadians := radius / 6378100.0 // Earth's radius in meters
-
+	//log.Printf("GetDishesByLocation: %v, %v, %v\n", lat, long, radius)
     // Build the base filter for geospatial query
     filter := bson.M{
         "location": bson.M{
@@ -117,6 +118,7 @@ func (r *DishRepository) GetDishesByLocation(
     // Count the total number of documents matching the filter
     totalCount, err := r.collection.CountDocuments(ctx, filter)
     if err != nil {
+		log.Printf("error: %v\n", err)
         return nil, 0, err
     }
 
@@ -126,6 +128,7 @@ func (r *DishRepository) GetDishesByLocation(
     // Query the collection
     cursor, err := r.collection.Find(ctx, filter, findOptions)
     if err != nil {
+		log.Printf("error: %v\n", err)
         return nil, 0, err
     }
     defer cursor.Close(ctx)
@@ -135,11 +138,13 @@ func (r *DishRepository) GetDishesByLocation(
     for cursor.Next(ctx) {
         var dish model.Dish
         if err := cursor.Decode(&dish); err != nil {
+			log.Printf("error: %v\n", err)
             return nil, 0, err
         }
         dishes = append(dishes, dish)
     }
     if err := cursor.Err(); err != nil {
+		log.Printf("error: %v\n", err)
         return nil, 0, err
     }
 
