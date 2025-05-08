@@ -14,7 +14,10 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   rating-service:
-    image: venkatesh1226m/kairos-rating-service:v1
+    image: venkatesh1226m/kairos-rating-service:v2
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: rating_service
     depends_on:
       - postgres

@@ -13,9 +13,9 @@ import (
 
 const addOrderItem = `-- name: AddOrderItem :exec
 INSERT INTO order_items (
-    order_item_id, order_id, dish_id, dish_order_status, quantity, price_per_unit, created_at
+    order_item_id, order_id, dish_id, dish_name, dish_order_status, quantity, price_per_unit, created_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP
+    $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP
 )
 `
 
@@ -23,6 +23,7 @@ type AddOrderItemParams struct {
 	OrderItemID     string  `json:"orderItemId"`
 	OrderID         string  `json:"orderId"`
 	DishID          string  `json:"dishId"`
+	DishName        string  `json:"dishName"`
 	DishOrderStatus string  `json:"dishOrderStatus"`
 	Quantity        int32   `json:"quantity"`
 	PricePerUnit    float64 `json:"pricePerUnit"`
@@ -33,6 +34,7 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) erro
 		arg.OrderItemID,
 		arg.OrderID,
 		arg.DishID,
+		arg.DishName,
 		arg.DishOrderStatus,
 		arg.Quantity,
 		arg.PricePerUnit,
@@ -56,9 +58,9 @@ func (q *Queries) CountActiveOrderItems(ctx context.Context, orderID string) (in
 
 const createOrder = `-- name: CreateOrder :exec
 INSERT INTO orders (
-    order_id, user_id, chef_id, total_price, pickup_time, created_at, updated_at
+    order_id, user_id, chef_id, chef_name, user_name, total_price, pickup_time, created_at, updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    $1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
 `
 
@@ -66,6 +68,8 @@ type CreateOrderParams struct {
 	OrderID    string      `json:"orderId"`
 	UserID     string      `json:"userId"`
 	ChefID     string      `json:"chefId"`
+	ChefName   string      `json:"chefName"`
+	UserName   string      `json:"userName"`
 	TotalPrice float64     `json:"totalPrice"`
 	PickupTime **time.Time `json:"pickupTime"`
 }
@@ -75,6 +79,8 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) error 
 		arg.OrderID,
 		arg.UserID,
 		arg.ChefID,
+		arg.ChefName,
+		arg.UserName,
 		arg.TotalPrice,
 		arg.PickupTime,
 	)
@@ -109,10 +115,11 @@ func (q *Queries) DeleteOrderItem(ctx context.Context, orderItemID string) (stri
 }
 
 const getChefOrders = `-- name: GetChefOrders :many
-SELECT order_id, user_id, chef_id, total_price, pickup_time, created_at, updated_at, canceled_at, completed_at, order_status, deleted_at 
+SELECT order_id, user_id, chef_id, chef_name, user_name, total_price, pickup_time, created_at, updated_at, canceled_at, completed_at, order_status, deleted_at 
 FROM orders
 WHERE chef_id = $1 
   AND deleted_at IS NULL
+ORDER BY updated_at DESC, created_at DESC
 `
 
 func (q *Queries) GetChefOrders(ctx context.Context, chefID string) ([]Order, error) {
@@ -128,6 +135,8 @@ func (q *Queries) GetChefOrders(ctx context.Context, chefID string) ([]Order, er
 			&i.OrderID,
 			&i.UserID,
 			&i.ChefID,
+			&i.ChefName,
+			&i.UserName,
 			&i.TotalPrice,
 			&i.PickupTime,
 			&i.CreatedAt,
@@ -145,6 +154,26 @@ func (q *Queries) GetChefOrders(ctx context.Context, chefID string) ([]Order, er
 		return nil, err
 	}
 	return items, nil
+}
+
+const getDishNameByOrderIDAndDishID = `-- name: GetDishNameByOrderIDAndDishID :one
+SELECT dish_name
+FROM order_items
+WHERE order_id = $1
+  AND dish_id = $2
+  AND deleted_at IS NULL
+`
+
+type GetDishNameByOrderIDAndDishIDParams struct {
+	OrderID string `json:"orderId"`
+	DishID  string `json:"dishId"`
+}
+
+func (q *Queries) GetDishNameByOrderIDAndDishID(ctx context.Context, arg GetDishNameByOrderIDAndDishIDParams) (string, error) {
+	row := q.db.QueryRow(ctx, getDishNameByOrderIDAndDishID, arg.OrderID, arg.DishID)
+	var dish_name string
+	err := row.Scan(&dish_name)
+	return dish_name, err
 }
 
 const getOrderIDByOrderItem = `-- name: GetOrderIDByOrderItem :one
@@ -174,9 +203,10 @@ func (q *Queries) GetOrderItemStatus(ctx context.Context, orderItemID string) (s
 }
 
 const getOrderItemsByOrderID = `-- name: GetOrderItemsByOrderID :many
-SELECT order_item_id, order_id, dish_id, dish_order_status, quantity, price_per_unit, created_at, deleted_at
+SELECT order_item_id, order_id, dish_id, dish_name, dish_order_status, quantity, price_per_unit, created_at, deleted_at
 FROM order_items
 WHERE order_id = $1
+ORDER BY created_at DESC
 `
 
 func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID string) ([]OrderItem, error) {
@@ -192,6 +222,7 @@ func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID string) ([
 			&i.OrderItemID,
 			&i.OrderID,
 			&i.DishID,
+			&i.DishName,
 			&i.DishOrderStatus,
 			&i.Quantity,
 			&i.PricePerUnit,
@@ -208,11 +239,31 @@ func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID string) ([
 	return items, nil
 }
 
+const getUserAndChefNameByOrderID = `-- name: GetUserAndChefNameByOrderID :one
+SELECT user_name, chef_name
+FROM orders
+WHERE order_id = $1
+  AND deleted_at IS NULL
+`
+
+type GetUserAndChefNameByOrderIDRow struct {
+	UserName string `json:"userName"`
+	ChefName string `json:"chefName"`
+}
+
+func (q *Queries) GetUserAndChefNameByOrderID(ctx context.Context, orderID string) (GetUserAndChefNameByOrderIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserAndChefNameByOrderID, orderID)
+	var i GetUserAndChefNameByOrderIDRow
+	err := row.Scan(&i.UserName, &i.ChefName)
+	return i, err
+}
+
 const getUserOrders = `-- name: GetUserOrders :many
-SELECT order_id, user_id, chef_id, total_price, pickup_time, created_at, updated_at, canceled_at, completed_at, order_status, deleted_at 
+SELECT order_id, user_id, chef_id, chef_name, user_name, total_price, pickup_time, created_at, updated_at, canceled_at, completed_at, order_status, deleted_at 
 FROM orders
 WHERE user_id = $1 
   AND deleted_at IS NULL
+ORDER BY updated_at DESC, created_at DESC
 `
 
 func (q *Queries) GetUserOrders(ctx context.Context, userID string) ([]Order, error) {
@@ -228,6 +279,8 @@ func (q *Queries) GetUserOrders(ctx context.Context, userID string) ([]Order, er
 			&i.OrderID,
 			&i.UserID,
 			&i.ChefID,
+			&i.ChefName,
+			&i.UserName,
 			&i.TotalPrice,
 			&i.PickupTime,
 			&i.CreatedAt,
@@ -286,6 +339,18 @@ WHERE order_id = $1
 
 func (q *Queries) SoftDeleteOrder(ctx context.Context, orderID string) error {
 	_, err := q.db.Exec(ctx, softDeleteOrder, orderID)
+	return err
+}
+
+const touchOrderUpdatedAt = `-- name: TouchOrderUpdatedAt :exec
+UPDATE orders
+SET updated_at = CURRENT_TIMESTAMP
+WHERE order_id = $1
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) TouchOrderUpdatedAt(ctx context.Context, orderID string) error {
+	_, err := q.db.Exec(ctx, touchOrderUpdatedAt, orderID)
 	return err
 }
 

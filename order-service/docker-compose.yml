@@ -86,7 +86,7 @@ services:
   #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   order-service:
-    image: venkatesh1226m/kairos-orders-service:v1
+    image: venkatesh1226m/kairos-orders-service:v2
     depends_on:
       - postgres
       # - kafka

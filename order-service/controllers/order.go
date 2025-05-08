@@ -28,31 +28,33 @@ func CreateOrder(queries *db.Queries, kafkaProducer sarama.SyncProducer) gin.Han
 	return func(c *gin.Context) {
 		var newOrder struct {
 			UserID     string      `json:"user_id" binding:"required"`
+			UserName   string      `json:"user_name" binding:"required"`
 			ChefID     string      `json:"chef_id" binding:"required"`
+			ChefName   string      `json:"chef_name" binding:"required"`
 			TotalPrice float64     `json:"total_price"`
 			PickupTime **time.Time `json:"pickup_time"`
 			OrderItems []struct {
 				DishID          string  `json:"dish_id" binding:"required"`
+				DishName        string  `json:"dish_name" binding:"required"`
 				DishOrderStatus string  `json:"dish_order_status"`
 				Quantity        int32   `json:"quantity" binding:"required"`
 				PricePerUnit    float64 `json:"price_per_unit" binding:"required"`
 			} `json:"order_items" binding:"required"`
 		}
 
-		// Bind incoming JSON data to struct
 		if err := c.ShouldBindJSON(&newOrder); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		// Generate a unique order ID
 		orderID := uuid.New().String()
 
-		// Call the CreateOrder query
 		err := queries.CreateOrder(c, db.CreateOrderParams{
 			OrderID:    orderID,
 			UserID:     newOrder.UserID,
 			ChefID:     newOrder.ChefID,
+			UserName:   newOrder.UserName,
+			ChefName:   newOrder.ChefName,
 			TotalPrice: newOrder.TotalPrice,
 			PickupTime: newOrder.PickupTime,
 		})
@@ -63,14 +65,19 @@ func CreateOrder(queries *db.Queries, kafkaProducer sarama.SyncProducer) gin.Han
 			return
 		}
 
-		// Insert the order items into the order_items table
+		// Collect dish names for notification
+		var dishNames []string
+
 		for _, item := range newOrder.OrderItems {
 			orderItemID := uuid.New().String()
+
+			dishNames = append(dishNames, fmt.Sprintf("%s (x%d)", item.DishName, item.Quantity))
 
 			err := queries.AddOrderItem(c, db.AddOrderItemParams{
 				OrderItemID:     orderItemID,
 				OrderID:         orderID,
 				DishID:          item.DishID,
+				DishName:        item.DishName,
 				DishOrderStatus: item.DishOrderStatus,
 				Quantity:        item.Quantity,
 				PricePerUnit:    item.PricePerUnit,
@@ -81,39 +88,37 @@ func CreateOrder(queries *db.Queries, kafkaProducer sarama.SyncProducer) gin.Han
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add order items"})
 				return
 			}
-	// Publish order placed event to Kafka
-	orderPlacedEvent := kafka.OrderPlacedEvent{
-	OrderID:    orderID,
-	DishID:     item.DishID,
-	Portions:   item.Quantity,
-	}
 
-	err = kafka.PublishOrderPlaced(kafkaProducer, orderPlacedEvent)
-	if err != nil {
-		log.Println("Error publishing to Kafka:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish order placed event"})
-		return
-	}
-
-
+			orderPlacedEvent := kafka.OrderPlacedEvent{
+				OrderID:  orderID,
+				DishID:   item.DishID,
+				Portions: item.Quantity,
+			}
+			if err := kafka.PublishOrderPlaced(kafkaProducer, orderPlacedEvent); err != nil {
+				log.Println("Error publishing to Kafka:", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish order placed event"})
+				return
+			}
 		}
 
+		// Join dish names into a readable string
+		dishList := strings.Join(dishNames, ", ")
+
+		// Send notifications
 		notifUser := kafka.NotificationEvent{
 			UserID:  newOrder.UserID,
-			Message: fmt.Sprintf("Order %s created successfully", orderID),
+			Message: fmt.Sprintf("Hi %s, your order %s has been placed with Chef %s. Items: %s.", newOrder.UserName, orderID, newOrder.ChefName, dishList),
 			Type:    "OrderService",
 		}
 		_ = kafka.SendNotification(kafkaProducer, notifUser)
 
 		notifChef := kafka.NotificationEvent{
 			UserID:  newOrder.ChefID,
-			Message: fmt.Sprintf("New order %s received", orderID),
+			Message: fmt.Sprintf("Hi %s, new order %s from %s. Items: %s.", newOrder.ChefName, orderID, newOrder.UserName, dishList),
 			Type:    "OrderService",
 		}
 		_ = kafka.SendNotification(kafkaProducer, notifChef)
 
-
-		// Respond with success message
 		c.JSON(http.StatusOK, gin.H{
 			"message":  "Order created successfully",
 			"order_id": orderID,
@@ -286,44 +291,35 @@ func UpdateOrderItemStatus(queries *db.Queries, kafkaProducer sarama.SyncProduce
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		// Get the order item ID from the route parameters.
 		orderItemID := c.Param("orderId")
 		if orderItemID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Order item ID is required"})
 			return
 		}
 
-		// Get the new status from the request body.
 		var requestBody struct {
-			Status string `json:"status" binding:"required"`
-			UserID string `json:"user_id" binding:"required"`
-			ChefID string `json:"chef_id" binding:"required"`
+			Status    string `json:"status" binding:"required"`
+			UserID    string `json:"user_id" binding:"required"`
+			UserName  string `json:"user_name" binding:"required"`
+			ChefID    string `json:"chef_id" binding:"required"`
+			ChefName  string `json:"chef_name" binding:"required"`
+			DishName  string `json:"dish_name" binding:"required"`
+			OrderID  string `json:"order_id" binding:"required"`
 		}
 		if err := c.ShouldBindJSON(&requestBody); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 			return
 		}
 
-		// Ensure the status is valid.
 		validStatuses := map[string]bool{
-			"pending":   true,
-			"PENDING": true,
-			"CONFIRMED": true,
-			"confirmed": true,
-			"READY": true,
-			"ready": true,
-			"CANCELED": true,
-			"canceled":  true,
-			"COMPLETED": true,
-			"completed": true,
-
+			"pending": true, "confirmed": true, "ready": true, "canceled": true, "completed": true,
+			"PENDING": true, "CONFIRMED": true, "READY": true, "CANCELED": true, "COMPLETED": true,
 		}
 		if !validStatuses[requestBody.Status] {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status value"})
 			return
 		}
 
-		// Update the order item status in the database.
 		err := queries.UpdateOrderItemStatus(ctx, db.UpdateOrderItemStatusParams{
 			OrderItemID:     orderItemID,
 			DishOrderStatus: requestBody.Status,
@@ -332,22 +328,32 @@ func UpdateOrderItemStatus(queries *db.Queries, kafkaProducer sarama.SyncProduce
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order item status"})
 			return
 		}
+		//  Touch the parent order's updated_at field
+		err = queries.TouchOrderUpdatedAt(ctx, requestBody.OrderID)
+		if err != nil {
+			log.Println("Failed to update order updated_at timestamp:", err)
+			// Not fatal, so don't return
+		}
+
+		// Capitalize status for display
+		statusDisplay := strings.Title(strings.ToLower(requestBody.Status))
 
 		userNotif := kafka.NotificationEvent{
-			UserID:  requestBody.UserID, 
-			Message: fmt.Sprintf("Order item %s status updated to %s", orderItemID, requestBody.Status),
-			Type:    "OrderService",
+			UserID: requestBody.UserID,
+			Message: fmt.Sprintf("Hi %s, your '%s' order status has been updated to %s.",
+				requestBody.UserName, requestBody.DishName, statusDisplay),
+			Type: "OrderService",
 		}
 		_ = kafka.SendNotification(kafkaProducer, userNotif)
 
 		chefNotif := kafka.NotificationEvent{
-			UserID:  requestBody.ChefID, 
-			Message: fmt.Sprintf("Order item %s status updated to %s", orderItemID, requestBody.Status),
-			Type:    "OrderService",
+			UserID: requestBody.ChefID,
+			Message: fmt.Sprintf("Hi %s, %s's order for '%s' has been updated to %s.",
+				requestBody.ChefName, requestBody.UserName, requestBody.DishName, statusDisplay),
+			Type: "OrderService",
 		}
 		_ = kafka.SendNotification(kafkaProducer, chefNotif)
 
-		// Respond with a success message.
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Order item status updated successfully",
 		})
@@ -401,7 +407,6 @@ func HandleReservationStatus(queries *db.Queries, kafkaProducer sarama.SyncProdu
 			"confirmed": true,
 			"rejected":  true,
 		}
-
 		if !validStatuses[status] {
 			log.Println("Invalid reservation status received:", status)
 			return
@@ -417,28 +422,49 @@ func HandleReservationStatus(queries *db.Queries, kafkaProducer sarama.SyncProdu
 			log.Println("Failed to update order item status:", err)
 			return
 		}
-
 		if affected == 0 {
 			log.Printf("No matching order item found for order_id=%s, dish_id=%s. Skipping notification.", payload.OrderID, payload.DishID)
 			return
 		}
 
-		log.Printf(" Order item status updated: order_id=%s, dish_id=%s, status=%s",
-			payload.OrderID, payload.DishID, status)
+		//  Fetch user_name and chef_name
+		userChefNames, err := queries.GetUserAndChefNameByOrderID(ctx, payload.OrderID)
+		if err != nil {
+			log.Println("Failed to fetch user/chef names:", err)
+			return
+		}
 
-		// Send notifications
+		//  Fetch dish_name
+		dishName, err := queries.GetDishNameByOrderIDAndDishID(ctx, db.GetDishNameByOrderIDAndDishIDParams{
+			OrderID: payload.OrderID,
+			DishID:  payload.DishID,
+		})
+		if err != nil {
+			log.Println("Failed to fetch dish name:", err)
+			return
+		}
+
+		statusDisplay := strings.Title(status) // e.g., "Confirmed"
+
+		// Send user notification
 		notifUser := kafka.NotificationEvent{
-			UserID:  payload.UserID,
-			Message: fmt.Sprintf("Your reservation for dish %s was %s", payload.DishID, status),
-			Type:    "OrderService",
+			UserID: payload.UserID,
+			Message: fmt.Sprintf("Hi %s, your '%s' order status has been updated to %s (%s).",
+				userChefNames.UserName, dishName, statusDisplay, payload.OrderID),
+			Type: "OrderService",
 		}
 		_ = kafka.SendNotification(kafkaProducer, notifUser)
 
+		// Send chef notification
 		notifChef := kafka.NotificationEvent{
-			UserID:  payload.ChefID,
-			Message: fmt.Sprintf("Reservation status for dish %s updated to %s", payload.DishID, status),
-			Type:    "OrderService",
+			UserID: payload.ChefID,
+			Message: fmt.Sprintf("Hi %s, %s's order for '%s' has been updated to %s (%s).",
+				userChefNames.ChefName, userChefNames.UserName, dishName, statusDisplay, payload.OrderID),
+			Type: "OrderService",
 		}
 		_ = kafka.SendNotification(kafkaProducer, notifChef)
+
+		log.Printf("Order item status updated and notifications sent: order_id=%s, dish_id=%s, status=%s",
+			payload.OrderID, payload.DishID, status)
 	}
 }
