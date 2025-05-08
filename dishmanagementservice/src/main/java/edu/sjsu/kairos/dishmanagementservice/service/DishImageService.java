@@ -38,7 +38,7 @@ public class DishImageService {
     public ImageDTO getImageByImageId(UUID imageId) throws ResourceNotFoundException {
         return imageRepository.findById(imageId)
                 .map(image -> {
-                    URL imageURL = amazonS3Service.generatePresignedUrl(image.getImageRef(), 3);
+                    URL imageURL = amazonS3Service.getPublicImageUrl(image.getImageRef());
                     return ImageDTO.builder().imageurl(imageURL).build();
                 })
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -50,7 +50,7 @@ public class DishImageService {
 
         return images.stream()
                 .map(image -> {
-                    URL imageURL = amazonS3Service.generatePresignedUrl(image.getImageRef(), 3);
+                    URL imageURL = amazonS3Service.getPublicImageUrl(image.getImageRef());
                     return ImageDTO.builder()
                             .imageId(image.getImageId())
                             .imageurl(imageURL)

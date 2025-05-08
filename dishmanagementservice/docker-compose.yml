@@ -17,7 +17,7 @@ services:
 
   # Spring Boot Application
   app:
-    image: neeharikasingh/dms-app:5.1
+    image: neeharikasingh/dms-app:6.0
     container_name: dish_management_service
     restart: always
     depends_on:
