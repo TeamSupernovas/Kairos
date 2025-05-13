@@ -1,0 +1,61 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+.env.*
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Python distribution / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Docker / containers
+*.pid
+*.bak
+*.swp
+*.sock
+
+# Model files
+model.pkl
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy / coverage
+.mypy_cache/
+.coverage
+htmlcov/
+
+# macOS and system files
+.DS_Store
+Thumbs.db
+
+# VSCode Python specific
+.python-version
+
+# Pydantic v2 generated files
+__pydantic__/ 
+
+# AWS credentials (if accidentally saved)
+.aws/
+

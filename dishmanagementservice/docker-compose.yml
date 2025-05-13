@@ -1,34 +1,11 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15
-    container_name: postgres_db
-    restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USERNAME: ${POSTGRES_USERNAME}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  # Spring Boot Application
   app:
     image: neeharikasingh/dms-app:6.0
     container_name: dish_management_service
     restart: always
-    depends_on:
-      - postgres
     env_file:
       - dms.env  # Load secrets from an external environment file
     ports:
       - "${APP_PORT}:8080"
-
-volumes:
-  postgres_data:
-    driver: local
-  app_data:
-    driver: local
