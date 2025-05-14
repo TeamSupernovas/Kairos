@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   api:
-    image: neeharikasingh/rms-api:0.1
+    image: neeharikasingh/rms-api:0.2
     ports:
       - "8000:8000"
     env_file: .env
