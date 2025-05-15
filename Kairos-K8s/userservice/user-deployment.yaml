@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  labels:
+    app: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: harshithakkapelli/userservice:v2
+          ports:
+            - containerPort: 9000
+          env:
+            - name: DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: user-secret
+                  key: DB_URI
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: user-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: user-secret
+                  key: KAFKA_PASSWORD
+            - name: KAFKA_BOOTSTRAP
+              valueFrom:
+                configMapKeyRef:
+                  name: user-config
+                  key: KAFKA_BOOTSTRAP

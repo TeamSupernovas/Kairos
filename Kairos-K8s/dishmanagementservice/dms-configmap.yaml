@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dms-config
+  labels:
+    app: dishmanagement-service
+data:
+  APP_PORT: "8080"
+  POSTGRES_JDBC_URL: "jdbc:postgresql://kairos-db.czuusgsqcjp4.us-west-1.rds.amazonaws.com:5432/dms-db"
+  KAFKA_HOST: "pkc-921jm.us-east-2.aws.confluent.cloud"
+  KAFKA_PORT: "9092"

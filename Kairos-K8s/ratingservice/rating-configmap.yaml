@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rating-config
+  labels:
+    app: rating-service
+data:
+  SERVER_PORT: "8090"
+  KAFKA_BROKERS: "pkc-921jm.us-east-2.aws.confluent.cloud:9092"
+  KAFKA_NOTIFICATION_TOPIC: "notification_events"

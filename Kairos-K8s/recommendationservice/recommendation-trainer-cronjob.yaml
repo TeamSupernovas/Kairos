@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: recommendation-trainer
+  labels:
+    app: recommendation-service
+spec:
+  schedule: "0 */2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            component: recommendation-trainer
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: recommendation-trainer
+              image: neeharikasingh/rms-trainer:0.3
+              envFrom:
+                - configMapRef:
+                    name: recommendation-config
+                - secretRef:
+                    name: recommendation-secret

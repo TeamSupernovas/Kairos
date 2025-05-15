@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dishmanagement-service
+  labels:
+    app: dishmanagement-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dishmanagement-service
+  template:
+    metadata:
+      labels:
+        app: dishmanagement-service
+    spec:
+      containers:
+        - name: dishmanagement-service
+          image: neeharikasingh/dms-app:6.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: dms-config
+                  key: APP_PORT
+            - name: POSTGRES_JDBC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: dms-config
+                  key: POSTGRES_JDBC_URL
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: POSTGRES_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: POSTGRES_PASSWORD
+            - name: KAFKA_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: dms-config
+                  key: KAFKA_HOST
+            - name: KAFKA_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: dms-config
+                  key: KAFKA_PORT
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: KAFKA_PASSWORD
+            - name: GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: GOOGLE_MAPS_API_KEY
+            - name: AWS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: AWS_ACCESS_KEY
+            - name: AWS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dms-secret
+                  key: AWS_SECRET_KEY

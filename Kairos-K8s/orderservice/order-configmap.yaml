@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-config
+  labels:
+    app: order-service
+data:
+  POSTGRES_DB: "orders_db"
+  POSTGRES_USER: "postgres"
+  KAFKA_BROKERS: "pkc-921jm.us-east-2.aws.confluent.cloud:9092"
+  SERVER_PORT: "8008"
+  ORDER_PLACED_TOPIC: "order-service.order.placed"
+  ORDER_UPDATED_TOPIC: "order-service.order.updated"
+  ORDER_DELETED_TOPIC: "order-service.order.deleted"
+  RESERVATION_STATUS_TOPIC: "dish-management-service.dish.reservation-status"
+  NOTIFICATION_TOPIC: "notification_events"

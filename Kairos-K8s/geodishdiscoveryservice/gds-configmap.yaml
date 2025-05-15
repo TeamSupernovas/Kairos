@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gds-config
+  labels:
+    app: geodishdiscovery-service
+data:
+  APP_PORT: ":9091"
+  MONGO_DB_NAME: "geodishDiscoveryDB"
+  MONGO_HOST: ""
+  MONGO_PORT: ""
+  AWS_REGION: "us-west-2"
+  AWS_S3_BUCKET: "kairosdishbucket"
+  AWS_LOCATION_PLACE_INDEX_NAME: "KairosPlaceIndex"
+  KAFKA_HOST: "pkc-921jm.us-east-2.aws.confluent.cloud"
+  KAFKA_PORT: "9092"
+  KAFKA_TOPIC_DISH_CREATED: "dish-management-service.dish.created"
+  KAFKA_TOPIC_DISH_UPDATED: "dish-management-service.dish.updated"
+  KAFKA_TOPIC_DISH_DELETED: "dish-management-service.dish.deleted"
+  KAFKA_GROUP_ID: "dish-management-group"

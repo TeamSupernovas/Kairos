@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-config
+  labels:
+    app: user-service
+data:
+  KAFKA_BOOTSTRAP: "pkc-921jm.us-east-2.aws.confluent.cloud:9092"

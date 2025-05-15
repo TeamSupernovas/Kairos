@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geodishdiscovery-service
+  labels:
+    app: geodishdiscovery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geodishdiscovery-service
+  template:
+    metadata:
+      labels:
+        app: geodishdiscovery-service
+    spec:
+      containers:
+        - name: geodishdiscovery-service
+          image: neeharikasingh/geo-app:4.0
+          ports:
+            - containerPort: 9091
+          env:
+            - name: APP_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: APP_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: MONGO_URI
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: MONGO_USERNAME
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: MONGO_PASSWORD
+            - name: MONGO_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: MONGO_DB_NAME
+            - name: MONGO_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: MONGO_HOST
+            - name: MONGO_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: MONGO_PORT
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: AWS_REGION
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: AWS_S3_BUCKET
+            - name: AWS_LOCATION_PLACE_INDEX_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: AWS_LOCATION_PLACE_INDEX_NAME
+            - name: KAFKA_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: KAFKA_HOST
+            - name: KAFKA_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: KAFKA_PORT
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gds-secret
+                  key: KAFKA_PASSWORD
+            - name: KAFKA_TOPIC_DISH_CREATED
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: KAFKA_TOPIC_DISH_CREATED
+            - name: KAFKA_TOPIC_DISH_UPDATED
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: KAFKA_TOPIC_DISH_UPDATED
+            - name: KAFKA_TOPIC_DISH_DELETED
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: KAFKA_TOPIC_DISH_DELETED
+            - name: KAFKA_GROUP_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: gds-config
+                  key: KAFKA_GROUP_ID

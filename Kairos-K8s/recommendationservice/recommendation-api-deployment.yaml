@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-api
+  labels:
+    app: recommendation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: recommendation-api
+  template:
+    metadata:
+      labels:
+        component: recommendation-api
+    spec:
+      containers:
+        - name: recommendation-api
+          image: neeharikasingh/rms-api:0.3
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-config
+                  key: DB_NAME
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-config
+                  key: DB_PORT
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-config
+                  key: AWS_REGION
+            - name: S3_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: recommendation-config
+                  key: S3_BUCKET_NAME
+
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: DB_PASSWORD
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: KAFKA_PASSWORD
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: S3_MODEL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: recommendation-secret
+                  key: S3_MODEL_KEY

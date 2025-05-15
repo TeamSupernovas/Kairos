@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rating-service
+  labels:
+    app: rating-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rating-service
+  template:
+    metadata:
+      labels:
+        app: rating-service
+    spec:
+      containers:
+        - name: rating-service
+          image: venkatesh1226m/kairos-rating-service:v3
+          ports:
+            - containerPort: 8090
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rating-secret
+                  key: DATABASE_URL
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rating-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rating-secret
+                  key: KAFKA_PASSWORD
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: rating-config
+                  key: KAFKA_BROKERS
+            - name: KAFKA_NOTIFICATION_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: rating-config
+                  key: KAFKA_NOTIFICATION_TOPIC
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: rating-config
+                  key: SERVER_PORT

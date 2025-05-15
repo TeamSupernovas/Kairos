@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  labels:
+    app: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: venkatesh1226m/kairos-orders-service:v3
+          ports:
+            - containerPort: 8008
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: order-secret
+                  key: DATABASE_URL
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-secret
+                  key: POSTGRES_PASSWORD
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: order-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-secret
+                  key: KAFKA_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: POSTGRES_USER
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: KAFKA_BROKERS
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: SERVER_PORT
+            - name: ORDER_PLACED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: ORDER_PLACED_TOPIC
+            - name: ORDER_UPDATED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: ORDER_UPDATED_TOPIC
+            - name: ORDER_DELETED_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: ORDER_DELETED_TOPIC
+            - name: RESERVATION_STATUS_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: RESERVATION_STATUS_TOPIC
+            - name: NOTIFICATION_TOPIC
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: NOTIFICATION_TOPIC
