@@ -1,26 +1,26 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: rating_postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5435:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: rating_postgres
+  #   environment:
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   ports:
+  #     - "5435:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
 
   rating-service:
-    image: venkatesh1226m/kairos-rating-service:v2
+    image: venkatesh1226m/kairos-rating-service:v3
     # build:
     #   context: .
     #   dockerfile: Dockerfile
     container_name: rating_service
-    depends_on:
-      - postgres
+    # depends_on:
+    #   - postgres
     env_file:
       - .env
     environment:
@@ -32,8 +32,8 @@ services:
       SERVER_PORT: ${SERVER_PORT}
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
-    command: >
-      sh -c "psql $DATABASE_URL -f /root/migrations/000001_create_rating_table.up.sql && ./rating-service"
+    # command: >
+    #   sh -c "psql $DATABASE_URL -f /root/migrations/000001_create_rating_table.up.sql && ./rating-service"
 
-volumes:
-  pgdata:
+# volumes:
+#   pgdata:

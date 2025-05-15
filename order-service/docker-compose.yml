@@ -54,16 +54,16 @@
 version: '3'
 
 services:
-  postgres:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # postgres:
+  #   image: postgres:17
+  #   environment:
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
 
   # zookeeper:
   #   image: confluentinc/cp-zookeeper:latest
@@ -86,9 +86,9 @@ services:
   #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   order-service:
-    image: venkatesh1226m/kairos-orders-service:v2
-    depends_on:
-      - postgres
+    image: venkatesh1226m/kairos-orders-service:v3
+    # depends_on:
+    #   - postgres
       # - kafka
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
@@ -99,7 +99,7 @@ services:
       KAFKA_BROKERS: ${KAFKA_BROKERS}
       SERVER_PORT: ${SERVER_PORT}
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
 
 #------------------------------------------------------------------------------------------------------------------------
