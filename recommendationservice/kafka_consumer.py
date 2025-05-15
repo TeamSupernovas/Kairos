@@ -4,10 +4,8 @@ import psycopg2
 from dotenv import load_dotenv
 from confluent_kafka import Consumer, KafkaException
 
-# Load .env variables
 load_dotenv()
 
-# PostgreSQL connection
 def get_db_conn():
     return psycopg2.connect(
         dbname=os.getenv("DB_NAME"),
@@ -17,7 +15,6 @@ def get_db_conn():
         port=os.getenv("DB_PORT", 5432)
     )
 
-# Insert user interaction (order or rate)
 def insert_interaction(user_id, dish_id, action, rating=None):
     conn = get_db_conn()
     cur = conn.cursor()
@@ -49,7 +46,6 @@ def insert_interaction(user_id, dish_id, action, rating=None):
     conn.close()
     print(f"Inserted {action} for user {user_id}, dish {dish_id}")
 
-# Store dish metadata for content filtering
 def store_dish(dish_id, name, features):
     conn = get_db_conn()
     cur = conn.cursor()
@@ -135,4 +131,4 @@ def start_consumer():
         consumer.close()
 
 if __name__ == "__main__":
-    start_consumer()
+    #start_consumer()
