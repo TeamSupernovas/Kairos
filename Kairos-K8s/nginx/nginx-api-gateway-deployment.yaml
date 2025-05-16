@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-api-gateway
+  labels:
+    app: nginx-api-gateway
 spec:
   replicas: 1
   selector:

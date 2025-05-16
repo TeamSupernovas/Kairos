@@ -2,34 +2,56 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: nginx-config
+  labels:
+    app: nginx-api-gateway
 data:
   nginx.conf: |
     events {}
     http {
-      include mime.types;
-      log_format my_format '$remote_addr - $remote_user [$time_local] "$request" '
-                                                        '$status $body_bytes_sent "$http_referer" '
-                                                        '"$http_user_agent" $request_time';
+      include       mime.types;
+      default_type  application/octet-stream;
 
+      log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" $request_time';
 
-      access_log /var/log/nginx/access.log my_format;
-      error_log /var/log/nginx/error.log warn;
+      access_log  /var/log/nginx/access.log  main;
+      error_log   /var/log/nginx/error.log warn;
+
       server {
         listen 8080;
-        location /auth/ {
-            proxy_pass http://auth-app-service.default.svc.cluster.local:8098/auth/;
+
+        location /dishmanagement/ {
+          proxy_pass http://dishmanagement-service.default.svc.cluster.local:8080/;
         }
-        location /users {
-            proxy_pass http://upm-app-service.default.svc.cluster.local:8088/users;
+
+        location /geodishdiscovery/ {
+          proxy_pass http://geodishdiscovery-service.default.svc.cluster.local:9091/;
         }
-        location /user-products/ {
-            proxy_pass http://ups-app-service.default.svc.cluster.local:8082/user-products/;
+
+        location /notification/ {
+          proxy_pass http://notification-service.default.svc.cluster.local:8080/;
         }
+
+        location /order/ {
+          proxy_pass http://order-service.default.svc.cluster.local:8008/;
+        }
+
+        location /rating/ {
+          proxy_pass http://rating-service.default.svc.cluster.local:8090/;
+        }
+
+        location /recommendation/ {
+          proxy_pass http://recommendation-api.default.svc.cluster.local:8000/;
+        }
+
+        location /user/ {
+          proxy_pass http://user-service.default.svc.cluster.local:9000/;
+        }
+
         location / {
-            add_header Content-Security-Policy "default-src * data:; script-src * 'unsafe-inline'; style-src * 'unsafe-inline'";
-            index index.html;
-            try_files $uri $uri/ /index.html;
+          add_header Content-Security-Policy "default-src * data:; script-src * 'unsafe-inline'; style-src * 'unsafe-inline'";
+          return 404;
         }
       }
-      
     }
